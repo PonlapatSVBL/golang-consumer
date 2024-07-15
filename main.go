@@ -19,9 +19,10 @@ var (
 )
 
 const (
-	maxConcurrent = 5
-	maxMessage    = 10
-	ctxTimeout    = 10 // second
+	maxConcurrent     = 20
+	maxMessage        = 100
+	ctxSessionTimeout = 5  // minute
+	ctxMessageTimeout = 10 // second
 )
 
 func main() {
@@ -41,33 +42,42 @@ func main() {
 
 func receiveMessageQueue(client *azservicebus.Client) {
 	// สร้าง Context สำหรับการทำงาน
-	ctx, cancel := context.WithTimeout(context.Background(), ctxTimeout*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), ctxSessionTimeout*time.Minute)
 	defer cancel()
+
+	ctx2, cancel2 := context.WithTimeout(context.Background(), ctxMessageTimeout*time.Second)
+	defer cancel2()
+
+	ctx3, cancel3 := context.WithTimeout(context.Background(), ctxMessageTimeout*time.Second)
+	defer cancel3()
 
 	// รับ Session Receiver สำหรับ queue
 	sessionReceiver, err := client.AcceptNextSessionForQueue(ctx, queueName, nil)
 	if err != nil {
-		// log.Fatalf("Failed to accept next session: %s", err)
-		log.Printf("Failed to accept next session: %s", err)
-		return
+		if ctx.Err() == context.DeadlineExceeded {
+			log.Printf("Failed to accept next session: %s, reinitializing context and retrying...", err)
+			return
+		} else {
+			log.Fatalf("Failed to accept next session: %s", err)
+		}
 	}
 	fmt.Printf("<===== Accept Session ID: %s =====>\n", sessionReceiver.SessionID())
 	defer sessionReceiver.Close(ctx)
 
 	// Loop เพื่อรับและประมวลผลข้อความ
 	for {
-		msgs, err := sessionReceiver.ReceiveMessages(ctx, maxMessage, nil)
+		msgs, err := sessionReceiver.ReceiveMessages(ctx2, maxMessage, nil)
 		// fmt.Println("have messages.")
 		if err != nil {
-			if ctx.Err() == context.DeadlineExceeded {
-				log.Printf("Context deadline exceeded, reinitializing context and retrying...")
+			if ctx2.Err() == context.DeadlineExceeded {
+				log.Printf("Failed to receive messages: %s, reinitializing context and retrying...", err)
 				break
 			} else {
 				log.Fatalf("Failed to receive messages: %s", err)
 			}
 		}
 
-		processMessages(ctx, sessionReceiver, msgs)
+		processMessages(ctx3, sessionReceiver, msgs)
 	}
 }
 
@@ -109,20 +119,27 @@ func processMessages(ctx context.Context, sessionReceiver *azservicebus.SessionR
 }
 
 func postRequest(ctx context.Context, sessionReceiver *azservicebus.SessionReceiver, task *azservicebus.ReceivedMessage) {
-	fmt.Printf("Received message: %s\n", string(task.Body))
-	sleep()
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	sleepDuration := r.Intn(1001) + 100
+
+	fmt.Printf("Received message: %s %dms\n", string(task.Body), sleepDuration)
+	sleep(sleepDuration)
 	fmt.Printf("Done: %s\n", string(task.Body))
 
 	// Complete ข้อความ
 	err := sessionReceiver.CompleteMessage(ctx, task, nil)
 	if err != nil {
-		log.Fatalf("Failed to complete message: %s", err)
+		if ctx.Err() == context.DeadlineExceeded {
+			log.Printf("Failed to complete message: %s, reinitializing context and retrying...", err)
+		} else {
+			log.Fatalf("Failed to complete message: %s", err)
+		}
 	}
 }
 
-func sleep() {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	sleepDuration := r.Intn(1001) + 100
+func sleep(sleepDuration int) {
+	// r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	// sleepDuration := r.Intn(1001) + 100
 	time.Sleep(time.Duration(sleepDuration) * time.Millisecond)
 }
 
