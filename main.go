@@ -26,7 +26,7 @@ const (
 
 func main() {
 	loadenv()
-	// runConcurrentTasks()
+	runConcurrentTasks()
 	runQueue()
 }
 
