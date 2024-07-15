@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"sync"
 	"time"
@@ -56,7 +57,7 @@ func receiveMessageQueue(client *azservicebus.Client) {
 	// Loop เพื่อรับและประมวลผลข้อความ
 	for {
 		msgs, err := sessionReceiver.ReceiveMessages(ctx, maxMessage, nil)
-		fmt.Println("have messages.")
+		// fmt.Println("have messages.")
 		if err != nil {
 			if ctx.Err() == context.DeadlineExceeded {
 				log.Printf("Context deadline exceeded, reinitializing context and retrying...")
@@ -109,12 +110,20 @@ func processMessages(ctx context.Context, sessionReceiver *azservicebus.SessionR
 
 func postRequest(ctx context.Context, sessionReceiver *azservicebus.SessionReceiver, task *azservicebus.ReceivedMessage) {
 	fmt.Printf("Received message: %s\n", string(task.Body))
+	sleep()
+	fmt.Printf("Done: %s\n", string(task.Body))
 
 	// Complete ข้อความ
 	err := sessionReceiver.CompleteMessage(ctx, task, nil)
 	if err != nil {
 		log.Fatalf("Failed to complete message: %s", err)
 	}
+}
+
+func sleep() {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	sleepDuration := r.Intn(1001) + 100
+	time.Sleep(time.Duration(sleepDuration) * time.Millisecond)
 }
 
 func loadenv() {
