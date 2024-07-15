@@ -26,7 +26,7 @@ const (
 
 func main() {
 	loadenv()
-	runConcurrentTasks()
+	// runConcurrentTasks()
 	runQueue()
 }
 
@@ -56,6 +56,7 @@ func runQueue() {
 	if err != nil {
 		log.Fatalf("Failed to accept next session: %s", err)
 	}
+	fmt.Printf("<===== Accept Session ID: %s =====>\n", sessionReceiver.SessionID())
 	defer sessionReceiver.Close(ctx)
 
 	// Loop เพื่อรับและประมวลผลข้อความ
