@@ -1,11 +1,22 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"math/rand"
+	"os"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
+	"github.com/joho/godotenv"
+)
+
+var (
+	connectionString string
+	queueName        string
 )
 
 const (
@@ -14,6 +25,59 @@ const (
 )
 
 func main() {
+	loadenv()
+	// runConcurrentTasks()
+	runQueue()
+}
+
+func loadenv() {
+	// Load environment variables from .env file
+	if err := godotenv.Load(); err != nil {
+		log.Fatalf("Error loading .env file: %s", err)
+	}
+
+	connectionString = os.Getenv("CONNECTION_STRING")
+	queueName = os.Getenv("QUEUE_NAME")
+}
+
+func runQueue() {
+	// สร้าง Service Bus Client
+	client, err := azservicebus.NewClientFromConnectionString(connectionString, nil)
+	if err != nil {
+		log.Fatalf("Failed to create client: %s", err)
+	}
+
+	// สร้าง Context สำหรับการทำงาน
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	// รับ Session Receiver สำหรับ queue
+	sessionReceiver, err := client.AcceptNextSessionForQueue(ctx, queueName, nil)
+	if err != nil {
+		log.Fatalf("Failed to accept next session: %s", err)
+	}
+	defer sessionReceiver.Close(ctx)
+
+	// Loop เพื่อรับและประมวลผลข้อความ
+	for {
+		msgs, err := sessionReceiver.ReceiveMessages(ctx, 1, nil)
+		if err != nil {
+			log.Fatalf("Failed to receive messages: %s", err)
+		}
+
+		for _, msg := range msgs {
+			fmt.Printf("Received message: %s\n", string(msg.Body))
+
+			// Complete ข้อความ
+			err = sessionReceiver.CompleteMessage(ctx, msg, nil)
+			if err != nil {
+				log.Fatalf("Failed to complete message: %s", err)
+			}
+		}
+	}
+}
+
+func runConcurrentTasks() {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// สร้าง channel สำหรับส่งงาน
