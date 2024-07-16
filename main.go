@@ -42,13 +42,6 @@ func main() {
 	// สร้าง RedisClient
 	redisClient = redis.NewRedisClient(redisHost, redisPass, 0)
 
-	// ดึงค่า hash field
-	val, err := redisClient.HGet("20220128FD2073B8FB7F_PAYROLL_QUEUE_ERROR_LOG", "20240401A1E02A2925D6")
-	if err != nil {
-		log.Fatalf("Failed to HGet field: %v", err)
-	}
-	fmt.Printf("myhash:field1 = %s\n", val)
-
 	// สร้าง Service Bus Client
 	client, err := azservicebus.NewClientFromConnectionString(connectionString, nil)
 	if err != nil {
