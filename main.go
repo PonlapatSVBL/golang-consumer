@@ -31,7 +31,7 @@ var (
 
 const (
 	maxConcurrent             = 5
-	maxMessage                = 100
+	maxMessage                = 5
 	ctxSessionTimeout         = 5  // minute
 	ctxMessageTimeout         = 10 // second
 	ctxCompleteMessageTimeout = 5  // minute
