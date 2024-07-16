@@ -244,7 +244,8 @@ func defineUrl(task *azservicebus.ReceivedMessage) string {
 		url = val
 	} else {
 		// fmt.Println("No 'url' key found in message body")
-		url = "http://localhost/api-server/api-test.php"
+		// url = "http://localhost/api-server/api-test.php"
+		url = "https://core.humansoft.co.th/api-web.php"
 	}
 
 	// Force define url for test
