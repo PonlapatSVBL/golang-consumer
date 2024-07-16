@@ -61,7 +61,9 @@ func receiveMessageQueue(client *azservicebus.Client) {
 			log.Printf("Failed to accept next session: %s, reinitializing context and retrying...", err)
 			return
 		} else {
-			log.Fatalf("Failed to accept next session: %s", err)
+			// log.Fatalf("Failed to accept next session: %s", err)
+			log.Printf("Failed to accept next session: %s", err)
+			return
 		}
 	}
 	fmt.Printf("<===== Accept Session ID: %s =====>\n", sessionReceiver.SessionID())
@@ -76,7 +78,9 @@ func receiveMessageQueue(client *azservicebus.Client) {
 				log.Printf("Failed to receive messages: %s, reinitializing context and retrying...", err)
 				break
 			} else {
-				log.Fatalf("Failed to receive messages: %s", err)
+				// log.Fatalf("Failed to receive messages: %s", err)
+				log.Printf("Failed to receive messages: %s", err)
+				break
 			}
 		}
 
@@ -134,22 +138,31 @@ func postRequest(ctx context.Context, sessionReceiver *azservicebus.SessionRecei
 	// สร้าง HTTP POST request
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(task.Body))
 	if err != nil {
-		log.Fatalf("Failed to create POST request: %s", err)
+		// log.Fatalf("Failed to create POST request: %s", err)
+		log.Printf("Failed to create POST request: %s", err)
+		return
 	}
 	req.Header.Set("Content-Type", "application/json")
+
+	// เพิ่ม header ใน request
+	req.Header.Set("X-Consumer-Key", "ZISgIXNxsDkOFanW0xcr")
 
 	// ส่ง request โดยใช้ http.Client
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatalf("Failed to send POST request: %s", err)
+		// log.Fatalf("Failed to send POST request: %s", err)
+		log.Printf("Failed to send POST request: %s", err)
+		return
 	}
 	defer resp.Body.Close()
 
 	// อ่าน response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalf("Failed to read response body: %s", err)
+		// log.Fatalf("Failed to read response body: %s", err)
+		log.Printf("Failed to read response body: %s", err)
+		return
 	}
 
 	// Complete ข้อความ
@@ -158,7 +171,9 @@ func postRequest(ctx context.Context, sessionReceiver *azservicebus.SessionRecei
 		if ctx.Err() == context.DeadlineExceeded {
 			log.Printf("Failed to complete message: %s, reinitializing context and retrying...", err)
 		} else {
-			log.Fatalf("Failed to complete message: %s", err)
+			// log.Fatalf("Failed to complete message: %s", err)
+			log.Printf("Failed to complete message: %s", err)
+			return
 		}
 	}
 
@@ -178,7 +193,8 @@ func defineUrl(task *azservicebus.ReceivedMessage) string {
 	var data map[string]interface{}
 	err := json.Unmarshal(task.Body, &data)
 	if err != nil {
-		log.Fatalf("Failed to unmarshal message body: %s", err)
+		// log.Fatalf("Failed to unmarshal message body: %s", err)
+		log.Printf("Failed to unmarshal message body: %s", err)
 	}
 
 	// ตรวจสอบว่ามี key "url" ในข้อมูลหรือไม่
